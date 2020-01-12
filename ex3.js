@@ -4,12 +4,16 @@ const util = require("util");
 const path = require("path");
 const fs = require("fs");
 const { Transform } = require('stream');
-const zlib = require('zlib');
+const zlib = require("zlib");
+
+const CAF = require("caf")
 
 const args = require("minimist")(process.argv.slice(2), {
   boolean: ["help", "in", "out", "compress", "uncompress"],
   string: ["file"]
 });
+
+processFile = CAF(processFile);
 
 var BASE_PATH = path.resolve(process.env.BASE_PATH || __dirname);
 
@@ -21,13 +25,23 @@ if (args.help) {
 
 } else if (args.in || args._.includes("-")) {
 
-  processFile(process.stdin);
+  let tooLong = CAF.timeout(12, "Took too long");
+
+  processFile(tooLong, process.stdin)
+  .catch(error)
 
 } else if (args.file) {
 
   let stream = fs.createReadStream(path.join(BASE_PATH, args.file));
-  processFile(stream);
+  
+  let tooLong = CAF.timeout(12, "Took too long");
 
+  processFile(tooLong, stream)
+  .then(function() {
+    console.log("\nComplete!")
+  })
+  .catch(error)
+  
 } else {
   
   error("Incorrect usage.", true);
@@ -36,7 +50,7 @@ if (args.help) {
 
 // *****************************
 
-function processFile(inStream) {
+function *processFile(signal, inStream) {
   let outStream = inStream;
 
   if (args.uncompress) {
@@ -69,6 +83,19 @@ function processFile(inStream) {
   }
 
   outStream.pipe(targetStream);
+
+  signal.pr.catch(function() {
+    outStream.unpipe(targetStream);
+    outStream.destroy();
+  });
+
+  yield streamComplete(outStream);
+}
+
+function streamComplete(stream) {
+  return new Promise(function (res) {
+    stream.on("end", res)
+  });
 }
 
 function error(msg, includeHelp = false) {
@@ -80,8 +107,8 @@ function error(msg, includeHelp = false) {
 }
 
 function printHelp() {
-  console.log("ex2 usage:");
-  console.log("   ex2.js --help\n");
+  console.log("ex3 usage:");
+  console.log("   ex3.js --help\n");
   console.log("--help                   print this help\n");
   console.log("--file={FILENAME}        process the file");
   console.log("--in, -                  process stdin");
