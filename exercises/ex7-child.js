@@ -1,6 +1,6 @@
 "use strict";
 
-// var fetch = require("node-fetch");
+var fetch = require("node-fetch");
 
 
 // ************************************
@@ -15,4 +15,9 @@ main().catch(() => 1);
 
 async function main() {
 	// TODO
+	var x = 0
+	for (let i =0 ; i < 10000; i++) {
+		// console.log(x)
+		x = i + 1
+	}
 }
